@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+#define MAX_URL_SIZE 2048
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -79,6 +81,12 @@ enum AgsUrlProtocol {
 };
 IAGSEngine *engine;
 
+#define FAIL_LOG_AND_EXIT(X) \
+do {                    \
+  aaou_log_info((X));   \
+  return 0;             \
+} while (0)
+
 const char *AGS_GetPluginName() {
 	return "AGS AppOpenURL Plugin";
 }
@@ -88,51 +96,52 @@ void aaou_log_info(const std::string& message){
     engine->PrintDebugConsole(message.c_str());
 }
 
+size_t aaou_strnlen_s (const char* s, size_t n)
+{
+    const char* found = (const char*) memchr(s, '\0', n);
+    return found ? (size_t)(found-s) : n;
+}
+
+
 int AGS_AppOpenURL(int iags_protocol, char const * iags_url_str)
 {
-    if(iags_url_str == nullptr) {
-        aaou_log_info("AppOpenURL: empty URL received.");
-        return 0;
+    if(iags_url_str == nullptr || iags_url_str[0] == 0) {
+        FAIL_LOG_AND_EXIT("AppOpenURL: empty URL received.");
+    }
+
+    if(aaou_strnlen_s(iags_url_str, MAX_URL_SIZE) == MAX_URL_SIZE) {
+        FAIL_LOG_AND_EXIT("AppOpenURL: URL is too big.");
     }
 
     std::string url_str = iags_url_str;
-    url_str.erase (std::remove (url_str.begin(), url_str.end(), ' '), url_str.end());
-    url_str.erase (std::remove (url_str.begin(), url_str.end(), '\t'), url_str.end());
-    url_str.erase (std::remove (url_str.begin(), url_str.end(), '\n'), url_str.end());
-    url_str.erase (std::remove (url_str.begin(), url_str.end(), '\r'), url_str.end());
-    if(url_str.empty()) {
-        aaou_log_info("AppOpenURL: URL was empty after clean up.");
-        return 0;
+    std::string rem_chars = " \t\n\r\n";
+    for (char rem_char : rem_chars) {
+        url_str.erase(std::remove(url_str.begin(), url_str.end(), rem_char), url_str.end());
     }
-    if(url_str[0] == ':' ||
-        (url_str.rfind("http", 0) == 0) ||
-        (url_str.rfind("file:", 0) == 0) ||
-        (url_str.rfind("//", 0) == 0)
-        )  {
-        aaou_log_info("AppOpenURL: URL included protocol specifiers.");
-        return 0;
+
+    if(url_str.empty()) {
+        FAIL_LOG_AND_EXIT("AppOpenURL: URL was empty after clean up.");
+    }
+    if(url_str[0] == ':' || (url_str.rfind("://") != std::string::npos))  {
+        FAIL_LOG_AND_EXIT("AppOpenURL: URL included protocol specifiers.");
     }
 
     auto proto = (AgsUrlProtocol) iags_protocol;
     std::string str_proto;
     switch (proto) {
-        case eAgsUrlProt_https:
-            str_proto = "https";
-            break;
-        case eAgsUrlProt_http:
-            str_proto = "http";
-            break;
-        default:
-            str_proto = "https";
+        case eAgsUrlProt_https: str_proto = "https"; break;
+        case eAgsUrlProt_http:  str_proto = "http";  break;
+        default: str_proto = "https";
     }
 
     std::string url_to_open = str_proto+"://"+url_str;
 
     int return_val = SDL_OpenURL(url_to_open.c_str());
-    bool success = return_val!=0;
-    if(success) aaou_log_info("AppOpenURL: failed to launch url");
-    else aaou_log_info("AppOpenURL: success launching url");
-    return success ? 1 : 0;
+    if(return_val!=0) {
+        FAIL_LOG_AND_EXIT("AppOpenURL: failed to launch url");
+    }
+    aaou_log_info("AppOpenURL: success launching url");
+    return 1;
 }
 
 void AGS_EngineStartup(IAGSEngine *lpEngine)
