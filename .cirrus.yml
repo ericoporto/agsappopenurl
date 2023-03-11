@@ -160,5 +160,43 @@ packaging_task:
     zip $cwd/agsappopenurl_windows.zip agsappopenurl.dll
     rm agsappopenurl.dll
     rm -rf $tmp/windows
-  binaries_artifacts:
+  archive_artifacts:
     path: agsappopenurl_*.*
+
+make_release_task:
+  depends_on:
+    - build_linux
+    - build_macos
+    - build_windows
+    - packaging
+  container:
+    image: alpine:3.10
+  env:
+    GITHUB_TOKEN: ENCRYPTED[c7b72688d97ccbdc9d36d6f5d0f438dc3f096b8f7b4c04564012bd0e9ea593849e0a47d151ba999aed2d506cfc1ff1ad]
+  install_packages_script: apk add --no-cache curl git libarchive-tools zip unzip
+  download_release_files_script: |
+    baseurl="https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/packaging/archive"
+    mkdir -p /tmp/github_release && \
+    cd /tmp/github_release && \
+    for download in \
+      "agsappopenurl_linux.tar.gz" \
+      "agsappopenurl_macos.zip" \
+      "agsappopenurl_windows.zip"
+    do
+      url="$baseurl/$download"
+      echo "Downloading $url"
+      curl -fLOJ "$url"
+    done
+  upload_release_script: |
+    if [ -z "$CIRRUS_RELEASE" ]; then
+      echo "This is not a release."
+      exit 0
+    fi
+    for fpath in $(find /tmp/github_release -type f); do
+      echo "Uploading $fpath"
+      curl -X POST \
+        --data-binary @$fpath \
+        --header "Authorization: token $GITHUB_TOKEN" \
+        --header "Content-Type: application/octet-stream" \
+        "https://uploads.github.com/repos/$CIRRUS_REPO_FULL_NAME/releases/$CIRRUS_RELEASE/assets?name=${fpath##*/}"
+    done
