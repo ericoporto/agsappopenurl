@@ -36,3 +36,6 @@ target_include_directories(agsappopenurl PRIVATE ../ags/Engine/)
 target_include_directories(agsappopenurl PRIVATE ../ags/Common/)
 target_include_directories(agsappopenurl PRIVATE ${SDL2_INCLUDE_DIRS})
 target_link_libraries(agsappopenurl PRIVATE ${SDL2_LIBRARIES})
+
+
+install(TARGETS agsappopenurl RUNTIME DESTINATION lib)

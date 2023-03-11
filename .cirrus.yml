@@ -1,0 +1,164 @@
+build_macos_task:
+  macos_instance:
+    matrix:
+      - image: ghcr.io/cirruslabs/macos-ventura-xcode:latest # newest release of current version
+  env:
+    matrix:
+      - BUILD_TYPE: release
+    CMAKE_VERSION: 3.24.4
+    NINJA_VERSION: 1.11.1
+    SDL2_VERSION: 2.24.2
+  macos_dependencies_cache:
+    folder: dep_cache
+    fingerprint_script: echo "ScriptV_01 $CMAKE_VERSION $NINJA_VERSION $SDL2_VERSION"
+    populate_script: |
+      mkdir dep_cache && cd dep_cache && mkdir bin && mkdir app && mkdir sdl2 && mkdir sdl2-install
+      url="https://github.com/ninja-build/ninja/releases/download/v$NINJA_VERSION/ninja-mac.zip"
+      echo "Downloading Ninja from $url"
+      curl -fLSs "$url" --output "ninja-mac.zip" && unzip -d bin ninja-mac.zip && rm ninja-mac.zip
+      url="https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-macos-universal.tar.gz"
+      echo "Downloading CMake from $url"
+      curl -fLSs "$url" | bsdtar -f - -xvzC app --strip-components 1
+      url="https://github.com/libsdl-org/SDL/releases/download/release-$SDL2_VERSION/SDL2-$SDL2_VERSION.tar.gz"
+      echo "Downloading SDL2 from $url"
+      curl -fLSs "$url" | bsdtar -f - --strip-components 1 -xvzC sdl2
+      sudo chown -R $USER /usr/local
+      mkdir -p /usr/local/bin
+      sudo chown $USER /usr/local/bin
+      pushd bin && cp ninja /usr/local/bin/ninja && popd
+      pushd sdl2 && mkdir build && pushd build && \
+        ../../app/CMake.app/Contents/bin/cmake -S .. -B . -G "Ninja" \
+        -DCMAKE_INSTALL_PREFIX="$(cd ../../sdl2-install && pwd)" \
+        -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+        -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+        && ninja install && popd && popd
+      rm -rf sdl2
+  install_dependencies_script: |
+    sudo chown -R $USER /usr/local
+    mkdir -p /usr/local/bin & mkdir -p /usr/local/lib && mkdir -p /usr/local/include && mkdir -p /usr/local/share
+    sudo chown $USER /usr/local/bin && sudo chown $USER /usr/local/lib && sudo chown $USER /usr/local/include && sudo chown $USER /usr/local/share
+    cd dep_cache
+    pushd sdl2-install && cp -Rv bin/* /usr/local/bin/ && cp -Rv lib/* /usr/local/lib/ && cp -Rv include/* /usr/local/include/ &&  cp -Rv share/* /usr/local/share/ && popd
+    pushd app && cp -R CMake.app /Applications/CMake.app && popd
+    pushd bin && cp ninja /usr/local/bin/ninja && popd
+  setup_agscode_script: |
+    pushd ..
+    url="https://github.com/adventuregamestudio/ags/archive/refs/tags/v.3.6.0.44.tar.gz"
+    mkdir ags && curl -fLSs "$url" | tar -f - -xvzC ags --strip-components 1
+    popd
+  setup_destdir_script: |
+    mkdir destdir
+    xcode=$(xcodebuild -version | awk '{ print $2; exit }')
+    ln -s destdir/lib lib_${xcode}_$BUILD_TYPE
+  build_script: |
+    xcode=$(xcodebuild -version | awk '{ print $2; exit }')
+    mkdir build_${xcode}_$BUILD_TYPE && cd build_${xcode}_$BUILD_TYPE
+    /Applications/CMake.app/Contents/bin/cmake -S .. -B . -G "Ninja" \
+      -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+      -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+      -DCMAKE_INSTALL_PREFIX="$(cd ../destdir && pwd)"
+    ninja install
+  binaries_artifacts:
+    path: lib_*/*
+
+build_linux_task:
+  container:
+    dockerfile: ci/linux/Dockerfile
+    docker_arguments:
+      matrix:
+        - FROM_PLATFORM: linux/i386
+        - FROM_PLATFORM: linux/amd64
+      FROM_DEBIAN: debian/eol:jessie
+  env:
+    matrix:
+      - BUILD_TYPE: release
+  setup_agscode_script: |
+    pushd ..
+    url="https://github.com/adventuregamestudio/ags/archive/refs/tags/v.3.6.0.44.tar.gz"
+    mkdir ags && curl -fLSs "$url" | tar -f - -xvzC ags --strip-components 1
+    popd
+  setup_destdir_script: |
+    mkdir destdir
+    arch=$(dpkg --print-architecture)
+    ln -s destdir/lib lib_${BUILD_TYPE}_$arch
+  build_script: |
+    arch=$(dpkg --print-architecture)
+    mkdir build_${BUILD_TYPE}_$arch && cd build_${BUILD_TYPE}_$arch
+    cmake .. \
+      -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+      -DCMAKE_INSTALL_PREFIX="$(cd ../destdir && pwd)"
+    make install
+  binaries_artifacts:
+    path: lib_*/*
+
+build_windows_task:
+  windows_container:
+    dockerfile: ci/windows/Dockerfile
+    os_version: 2019
+  env:
+    matrix:
+      - BUILD_CONFIG: Release
+  setup_agscode_script: |
+    pushd ..
+    set url="https://github.com/adventuregamestudio/ags/archive/refs/tags/v.3.6.0.44.tar.gz"
+    mkdir ags && curl -fLSs %url% | tar -f - -xvzC ags --strip-components 1
+    popd
+  build_script: |
+    mkdir artifacts
+    mkdir build-%BUILD_CONFIG% && cd build-%BUILD_CONFIG%
+    "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86
+    cmake -DCMAKE_BUILD_TYPE=%BUILD_CONFIG%  -DCMAKE_PREFIX_PATH="C:\\Lib\\SDL2" -G"Visual Studio 14 2015" -T"v140" -A"Win32" ..
+    cmake --build . --config %BUILD_CONFIG%
+    cd %BUILD_CONFIG%
+    copy *.dll ..\..\artifacts\
+  binaries_artifacts:
+    path: artifacts/*.dll
+
+packaging_task:
+  depends_on:
+    - build_linux
+    - build_macos
+    - build_windows
+  container:
+    image: alpine:3.10
+  install_packages_script: apk add --no-cache curl libarchive-tools zip unzip
+  package_linux_script: |
+    cwd="$(pwd)"
+    tmp=/tmp/bundle$$
+    mkdir -p $tmp/linux
+    url="https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/build_linux/binaries.zip"
+    echo Downloading files for Linux
+    curl -fLsS "$url" --output "$tmp/binaries.zip"
+    unzip -d "$tmp/linux" "$tmp/binaries.zip"
+    rm -fr $tmp/binaries.zip
+    cd $tmp/linux && mv lib_release_amd64 lib64 && mv lib_release_i386 lib32 && cd $cwd
+    cd $tmp/linux && bsdtar -cvzf $cwd/agsappopenurl_linux.tar.gz lib* && cd $cwd
+    rm -rf $tmp/linux
+  package_macos_script: |
+    cwd="$(pwd)"
+    tmp=/tmp/bundle$$
+    mkdir -p $tmp/macos
+    url="https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/build_macos/binaries.zip"
+    echo Downloading files for macOS
+    curl -fLsS "$url" --output "$tmp/binaries.zip"
+    unzip -d "$tmp/macos" "$tmp/binaries.zip"
+    rm -fr $tmp/binaries.zip
+    cp $tmp/macos/*/*.dylib .
+    zip $cwd/agsappopenurl_macos.zip libagsappopenurl.dylib
+    rm libagsappopenurl.dylib
+    rm -rf $tmp/macos
+  package_windows_script: |
+    cwd="$(pwd)"
+    tmp=/tmp/bundle$$
+    mkdir -p $tmp/windows
+    url="https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/build_windows/binaries.zip"
+    echo Downloading files for Windows
+    curl -fLsS "$url" --output "$tmp/binaries.zip"
+    unzip -d "$tmp/windows" "$tmp/binaries.zip"
+    rm -fr $tmp/binaries.zip
+    cp $tmp/windows/*/*.dll .
+    zip $cwd/agsappopenurl_windows.zip agsappopenurl.dll
+    rm agsappopenurl.dll
+    rm -rf $tmp/windows
+  binaries_artifacts:
+    path: agsappopenurl_*.*
