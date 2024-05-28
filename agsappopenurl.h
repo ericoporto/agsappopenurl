@@ -34,6 +34,7 @@ namespace agsappopenurl
   int AGS_EngineOnEvent(int event, int data);
   int AGS_EngineDebugHook(const char *scriptName, int lineNum, int reserved);
   void AGS_EngineInitGfx(const char *driverID, void *data);
+  int AGS_PluginV2();
 }
 
 #endif // AGSAPPOPENURL_H

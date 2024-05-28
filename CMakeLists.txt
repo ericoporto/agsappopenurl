@@ -3,7 +3,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 set(CMAKE_USER_MAKE_RULES_OVERRIDE_CXX ${CMAKE_CURRENT_SOURCE_DIR}/CMake/cxx_flag_overrides.cmake)
 
 project(agsappopenurl
-		VERSION 0.1.0
+		VERSION 0.2.0
 		DESCRIPTION "AGS Plugin to open a URL in the system browser."
 		LANGUAGES CXX
 		)

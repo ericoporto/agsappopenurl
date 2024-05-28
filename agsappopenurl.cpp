@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2023 Érico Porto
+ * Copyright (c) 2024 Érico Porto
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -93,7 +93,12 @@ const char *AGS_GetPluginName() {
 
 void aaou_log_info(const std::string& message){
     if(engine == nullptr) return;
-    engine->PrintDebugConsole(message.c_str());
+    if(engine->version >= 29)
+    {
+        engine->Log(AGSLOG_LEVEL_INFO, "%s", message.c_str());
+    } else {
+        engine->PrintDebugConsole(message.c_str());
+    }
 }
 
 size_t aaou_strnlen_s (const char* s, size_t n)
@@ -159,5 +164,6 @@ void AGS_EngineStartup(IAGSEngine *lpEngine)
 
 void AGS_EngineShutdown() {}
 int AGS_EngineOnEvent (int event, int data) { return 0; }
+int AGS_PluginV2 () { return 1; }
 
 // ****** END RUN TIME ********
