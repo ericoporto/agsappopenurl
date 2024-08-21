@@ -141,6 +141,32 @@ size_t aaou_strnlen_s (const char* s, size_t n)
     return found ? (size_t)(found-s) : n;
 }
 
+#if defined(__APPLE__)
+// I am assuming macOS here
+// using code from SO here https://stackoverflow.com/questions/4177744/c-os-x-open-default-browser
+#include <CoreFoundation/CFBundle.h>
+#include <ApplicationServices/ApplicationServices.h>
+
+int OpenURL(const std::string& url)
+{
+  CFURLRef url = CFURLCreateWithBytes (
+      NULL,                        // allocator
+      (UInt8*)url_str.c_str(),     // URLBytes
+      url_str.length(),            // length
+      kCFStringEncodingASCII,      // encoding
+      NULL                         // baseURL
+    );
+  LSOpenCFURLRef(url,0);
+  CFRelease(url);
+  return 0;
+}
+#else
+int OpenURL(const std::string& url)
+{
+    return SDL_OpenURL(url.c_str());
+}
+#endif
+
 
 int AGS_AppOpenURL(int iags_protocol, char const * iags_url_str)
 {
@@ -175,7 +201,7 @@ int AGS_AppOpenURL(int iags_protocol, char const * iags_url_str)
 
     std::string url_to_open = str_proto+"://"+url_str;
 
-    int return_val = SDL_OpenURL(url_to_open.c_str());
+    int return_val = OpenURL(url_to_open);
     if(return_val!=0) {
         FAIL_LOG_AND_EXIT("AppOpenURL: failed to launch url");
     }
