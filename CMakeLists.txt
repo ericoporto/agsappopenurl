@@ -27,6 +27,9 @@ find_package(SDL2 REQUIRED)
 message("SDL2_INCLUDE_DIRS: ${SDL2_INCLUDE_DIRS}")
 message("SDL2_LIBRARIES: ${SDL2_LIBRARIES}")
 
+# fix issue in cmake 3.16.4 in Ubuntu 16.04
+string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
+
 add_library(agsappopenurl SHARED
         agsappopenurl.cpp
         agsappopenurl.h 
