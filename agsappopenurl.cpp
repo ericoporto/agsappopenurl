@@ -48,12 +48,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID /*lpRese
 #include "agsappopenurl.h"
 #include <algorithm>
 #include <string>
-#include "SDL.h"
 
 // ***** DESIGN TIME CALLS *******
 IAGSEditor *editor;
 const char *ourScriptHeader =
-  "#define AGS_APPOPENURL_VERSION 1\r\n"
+  "#define AGS_APPOPENURL_VERSION 2\r\n"
   "enum AgsUrlProtocol {\r\n"
   " eAUrlProto_https = 0,\r\n"
   " eAUrlProto_http\r\n"
@@ -161,6 +160,7 @@ int OpenURL(const std::string& url)
   return 0;
 }
 #else
+#include "SDL.h"
 int OpenURL(const std::string& url)
 {
     return SDL_OpenURL(url.c_str());
