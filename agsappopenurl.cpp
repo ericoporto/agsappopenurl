@@ -31,10 +31,17 @@
 // DllMain - standard Windows DLL entry point.
 // The AGS editor will cause this to get called when the editor first
 // starts up, and when it shuts down at the end.
-BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID /*lpReserved*/)
 {
-  return TRUE;
+    return TRUE;
 }
+#define LIBRARY_API
+#define EXPORT comment(linker, "/EXPORT:" __FUNCTION__ "=" __FUNCDNAME__)
+#define DO_PRAGMA_EXPORT 1
+#else
+#define LIBRARY_API extern "C"
+#define EXPORT
+#define DO_PRAGMA_EXPORT 0
 #endif // _WIN32
 
 #define THIS_IS_THE_PLUGIN
@@ -53,8 +60,11 @@ const char *ourScriptHeader =
   "};\r\n"
   "import bool AppOpenURL(AgsUrlProtocol protocol, const string url);\r\n";
 
-int AGS_EditorStartup(IAGSEditor *lpEditor)
+LIBRARY_API int AGS_EditorStartup(IAGSEditor *lpEditor)
 {
+#if DO_PRAGMA_EXPORT
+#pragma EXPORT
+#endif
   if (lpEditor->version < 1)
     return -1;
 
@@ -63,14 +73,35 @@ int AGS_EditorStartup(IAGSEditor *lpEditor)
   return 0; // Return 0 to indicate success
 }
 
-void AGS_EditorShutdown()
+LIBRARY_API void AGS_EditorShutdown()
 {
+#if DO_PRAGMA_EXPORT
+#pragma EXPORT
+#endif
   editor->UnregisterScriptHeader(ourScriptHeader);
 }
 
-void AGS_EditorProperties(HWND parent) {}
-int AGS_EditorSaveGame(char *buffer, int bufsize) { return 0; }
-void AGS_EditorLoadGame(char *buffer, int bufsize) {}
+LIBRARY_API void AGS_EditorProperties(HWND parent)
+{
+#if DO_PRAGMA_EXPORT
+#pragma EXPORT
+#endif
+}
+
+LIBRARY_API int AGS_EditorSaveGame(char *buffer, int bufsize)
+{
+#if DO_PRAGMA_EXPORT
+#pragma EXPORT
+#endif
+    return 0;
+}
+
+LIBRARY_API void AGS_EditorLoadGame(char *buffer, int bufsize)
+{
+#if DO_PRAGMA_EXPORT
+#pragma EXPORT
+#endif
+}
 
 // ******* END DESIGN TIME  *******
 
@@ -91,14 +122,17 @@ const char *AGS_GetPluginName() {
 	return "AGS AppOpenURL Plugin";
 }
 
+#define AAOULOG_LEVEL_INFO   5
+
 void aaou_log_info(const std::string& message){
     if(engine == nullptr) return;
-    if(engine->version >= 29)
-    {
-        engine->Log(AGSLOG_LEVEL_INFO, "%s", message.c_str());
-    } else {
-        engine->PrintDebugConsole(message.c_str());
-    }
+// uncomment when 3.6.2 is released
+//    if(engine->version >= 29)
+//    {
+//        engine->Log(AAOULOG_LEVEL_INFO, "%s", message.c_str());
+//    } else {
+    engine->PrintDebugConsole(message.c_str());
+//    }
 }
 
 size_t aaou_strnlen_s (const char* s, size_t n)
@@ -149,21 +183,43 @@ int AGS_AppOpenURL(int iags_protocol, char const * iags_url_str)
     return 1;
 }
 
-void AGS_EngineStartup(IAGSEngine *lpEngine)
+LIBRARY_API void AGS_EngineStartup(IAGSEngine *lpEngine)
 {
-  engine = lpEngine;
+#if DO_PRAGMA_EXPORT
+#pragma EXPORT
+#endif
+    engine = lpEngine;
 
-  // Make sure it's got the version with the features we need
-  if (engine->version < 3)
-  {
-    engine->AbortGame ("Engine interface is too old, need newer version of AGS.");
-  }
+    // Make sure it's got the version with the features we need
+    if (engine->version < 3)
+    {
+        engine->AbortGame ("Engine interface is too old, need newer version of AGS.");
+    }
 
-  engine->RegisterScriptFunction("AppOpenURL", (void *)(AGS_AppOpenURL));
+    engine->RegisterScriptFunction("AppOpenURL", (void *)(AGS_AppOpenURL));
 }
 
-void AGS_EngineShutdown() {}
-int AGS_EngineOnEvent (int event, int data) { return 0; }
-int AGS_PluginV2 () { return 1; }
+LIBRARY_API void AGS_EngineShutdown ()
+{
+#if DO_PRAGMA_EXPORT
+#pragma EXPORT
+#endif
+}
+
+LIBRARY_API int AGS_EngineOnEvent (int event, int data)
+{
+#if DO_PRAGMA_EXPORT
+#pragma EXPORT
+#endif
+    return 0;
+}
+
+LIBRARY_API int AGS_PluginV2 ()
+{
+#if DO_PRAGMA_EXPORT
+#pragma EXPORT
+#endif
+    return 1;
+}
 
 // ****** END RUN TIME ********
