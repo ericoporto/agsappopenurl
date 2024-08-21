@@ -48,6 +48,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID /*lpRese
 #include "agsappopenurl.h"
 #include <algorithm>
 #include <string>
+#include <cstring>
 
 // ***** DESIGN TIME CALLS *******
 IAGSEditor *editor;
@@ -136,7 +137,7 @@ void aaou_log_info(const std::string& message){
 
 size_t aaou_strnlen_s (const char* s, size_t n)
 {
-    const char* found = (const char*) memchr(s, '\0', n);
+    const char* found = (const char*) std::memchr(s, '\0', n);
     return found ? (size_t)(found-s) : n;
 }
 
