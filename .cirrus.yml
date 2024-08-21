@@ -43,7 +43,7 @@ build_macos_task:
     pushd bin && cp ninja /usr/local/bin/ninja && popd
   setup_agscode_script: |
     pushd ..
-    url="https://github.com/adventuregamestudio/ags/archive/refs/tags/v.3.6.0.44.tar.gz"
+    url="https://github.com/adventuregamestudio/ags/archive/refs/tags/v3.6.1.27.tar.gz"
     mkdir ags && curl -fLSs "$url" | tar -f - -xvzC ags --strip-components 1
     popd
   setup_destdir_script: |
@@ -74,7 +74,7 @@ build_linux_task:
       - BUILD_TYPE: release
   setup_agscode_script: |
     pushd ..
-    url="https://github.com/adventuregamestudio/ags/archive/refs/tags/v.3.6.0.44.tar.gz"
+    url="https://github.com/adventuregamestudio/ags/archive/refs/tags/v3.6.1.27.tar.gz"
     mkdir ags && curl -fLSs "$url" | tar -f - -xvzC ags --strip-components 1
     popd
   setup_destdir_script: |
@@ -100,7 +100,7 @@ build_windows_task:
       - BUILD_CONFIG: Release
   setup_agscode_script: |
     pushd ..
-    set url="https://github.com/adventuregamestudio/ags/archive/refs/tags/v.3.6.0.44.tar.gz"
+    set url="https://github.com/adventuregamestudio/ags/archive/refs/tags/v3.6.1.27.tar.gz"
     mkdir ags && curl -fLSs %url% | tar -f - -xvzC ags --strip-components 1
     popd
   build_script: |
