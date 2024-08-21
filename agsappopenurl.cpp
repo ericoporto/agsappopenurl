@@ -147,7 +147,7 @@ size_t aaou_strnlen_s (const char* s, size_t n)
 #include <CoreFoundation/CFBundle.h>
 #include <ApplicationServices/ApplicationServices.h>
 
-int OpenURL(const std::string& url)
+int OpenURL(const std::string& url_str)
 {
   CFURLRef url = CFURLCreateWithBytes (
       NULL,                        // allocator
@@ -156,15 +156,19 @@ int OpenURL(const std::string& url)
       kCFStringEncodingASCII,      // encoding
       NULL                         // baseURL
     );
-  LSOpenCFURLRef(url,0);
+  OSStatus err = LSOpenCFURLRef(url,0);
   CFRelease(url);
-  return 0;
+  if(err == noErr)
+  {
+    return 0;
+  }
+  return -1;
 }
 #else
 #include "SDL.h"
-int OpenURL(const std::string& url)
+int OpenURL(const std::string& url_str)
 {
-    return SDL_OpenURL(url.c_str());
+    return SDL_OpenURL(url_str.c_str());
 }
 #endif
 
