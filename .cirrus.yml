@@ -1,7 +1,6 @@
 build_macos_task:
   macos_instance:
-    matrix:
-      - image: ghcr.io/cirruslabs/macos-ventura-xcode:latest # newest release of current version
+    image: ghcr.io/cirruslabs/macos-runner:sonoma # newest release of current version
   env:
     matrix:
       - BUILD_TYPE: release
@@ -48,11 +47,12 @@ build_macos_task:
     popd
   setup_destdir_script: |
     mkdir destdir
-    xcode=$(xcodebuild -version | awk '{ print $2; exit }')
-    ln -s destdir/lib lib_${xcode}_$BUILD_TYPE
+    xcodebuild -version > xcodeversion
+    xcode=$(awk '{ print $2; exit }' xcodeversion)
+    echo ${xcode}
+    ln -s destdir/lib lib_$BUILD_TYPE
   build_script: |
-    xcode=$(xcodebuild -version | awk '{ print $2; exit }')
-    mkdir build_${xcode}_$BUILD_TYPE && cd build_${xcode}_$BUILD_TYPE
+    mkdir build_$BUILD_TYPE && cd build_$BUILD_TYPE
     /Applications/CMake.app/Contents/bin/cmake -S .. -B . -G "Ninja" \
       -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
       -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
