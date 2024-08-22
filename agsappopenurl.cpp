@@ -141,6 +141,8 @@ size_t aaou_strnlen_s (const char* s, size_t n)
     return found ? (size_t)(found-s) : n;
 }
 
+bool is_utf8 = true;
+
 #if defined(__APPLE__)
 // I am assuming macOS here
 // using code from SO here https://stackoverflow.com/questions/4177744/c-os-x-open-default-browser
@@ -153,7 +155,7 @@ int OpenURL(const std::string& url_str)
         NULL,                        // allocator
         (UInt8*)url_str.c_str(),     // URLBytes
         url_str.length(),            // length
-        kCFStringEncodingUTF8,      // encoding
+        is_utf8 ? kCFStringEncodingUTF8 : kCFStringEncodingASCII,      // encoding
         NULL                         // baseURL
     );
     OSStatus err = LSOpenCFURLRef(url,0);
@@ -210,6 +212,10 @@ int AGS_AppOpenURL(int iags_protocol, char const * iags_url_str)
     return 1;
 }
 
+const int AGS_OPT_GAMETEXTENCODING = 49;
+typedef int (*SCAPI_GETGAMEOPTION) (int opt);
+SCAPI_GETGAMEOPTION GetGameOption = nullptr;
+
 LIBRARY_API void AGS_EngineStartup(IAGSEngine *lpEngine)
 {
 #if DO_PRAGMA_EXPORT
@@ -221,6 +227,12 @@ LIBRARY_API void AGS_EngineStartup(IAGSEngine *lpEngine)
     if (engine->version < 3)
     {
         engine->AbortGame ("Engine interface is too old, need newer version of AGS.");
+    }
+
+    GetGameOption = (SCAPI_GETGAMEOPTION)engine->GetScriptFunctionAddress("GetGameOption");
+    if(GetGameOption != nullptr)
+    {
+        is_utf8 = (GetGameOption(AGS_OPT_GAMETEXTENCODING) == 65001);
     }
 
     engine->RegisterScriptFunction("AppOpenURL", (void *)(AGS_AppOpenURL));
