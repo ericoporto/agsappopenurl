@@ -172,7 +172,7 @@ make_release_task:
   container:
     image: alpine:3.10
   env:
-    GITHUB_TOKEN: ENCRYPTED[c7b72688d97ccbdc9d36d6f5d0f438dc3f096b8f7b4c04564012bd0e9ea593849e0a47d151ba999aed2d506cfc1ff1ad]
+    GITHUB_TOKEN: ENCRYPTED[0a02d572a8e76d7072bee48a9b16af6d6728c969f506eb53132150403af7a3f841b54d088ea017eae5bfbb353f1bf657]
   install_packages_script: apk add --no-cache curl git libarchive-tools zip unzip
   download_release_files_script: |
     baseurl="https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/packaging/archive"
