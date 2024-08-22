@@ -44,7 +44,7 @@ else ()
 	message("SDL2_LIBRARIES: ${SDL2_LIBRARIES}")
 
 	# fix issue in cmake 3.16.4 in Ubuntu 16.04
-	string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES)
+	string(STRIP "${SDL2_LIBRARIES}" SDL2_LIBRARIES)
 endif()
 
 add_library(agsappopenurl SHARED
